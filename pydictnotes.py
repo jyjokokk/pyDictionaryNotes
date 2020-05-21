@@ -12,8 +12,9 @@ import json
 PATH_TO_DATA = "./data/notes.json"
 NOTES = {}
 
-with open(PATH_TO_DATA, 'w+') as data:
-    NOTES = json.load(data)
+with open(PATH_TO_DATA, 'r') as in_file:
+    data = in_file.read()
+    NOTES = json.loads(data)
 
 
 def add_entry(entry: str, description: str, *args: str) -> bool:
@@ -109,24 +110,34 @@ def print_entries(item: dict):
 def save_file():
     """Writes all notes to a file"""
     with open(PATH_TO_DATA, 'w') as out_file:
-        # json.dump(data, out_file)
+        json.dump(NOTES, out_file)
+
+
+def save_file_pretty():
+    """Writes all notes to a file, in human readable format"""
+    with open('data/notes_pretty.json', 'w') as out_file:
         out = json.dumps(NOTES, sort_keys=True, indent=2, separators=(",", ": "))
         out_file.write(out)
-        
+
 
 
 # Testing purposes
 if __name__ == "__main__":
 
-    add_entry("FirstNote", "Entry in notes", "new", "sample")
-    add_entry("SecondNote", "basic stuff", "python", "json")
+    # add_entry("FirstNote", "Entry in notes", "new", "sample")
+    # add_entry("SecondNote", "basic stuff", "python", "json")
+    add_entry("Third Note", "Third note in file", "pretty", "print", "format")
+    # delete_entry('Third Note')
+    save_file()
+    save_file_pretty()
     print_entries_raw()
-    print("========================")
-    add_tag('FirstNote', "pyflakes")
-    remove_tag('SecondNote', 'json')
-    edit_description('SecondNote', "New description!")
-    print_entries_raw()
-    print("========================")
-    update_tags('FirstNote')
-    delete_entry('SecondNote')
-    print_entries_raw()
+    # print_entries_raw()
+    # print("========================")
+    # add_tag('FirstNote', "pyflakes")
+    # remove_tag('SecondNote', 'json')
+    # edit_description('SecondNote', "New description!")
+    # print_entries_raw()
+    # print("========================")
+    # update_tags('FirstNote')
+    # delete_entry('SecondNote')
+    # print_entries_raw()
