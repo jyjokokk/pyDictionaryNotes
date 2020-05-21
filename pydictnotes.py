@@ -22,7 +22,7 @@ def add_entry(entry: str, description: str, *args: str) -> bool:
     Returns:
         bool -- If operation succeeded
     """
-    tags = set()
+    tags = []
     for a in args:
         tags.add(a.lower)
     NOTES[entry.lower] = {
@@ -52,7 +52,9 @@ def add_tag(entry: str, tag: str) -> bool:
     Returns:
         bool: if successfull
     """
-    NOTES[entry.lower]['tags'].add(tag.lower)
+    tags = NOTES[entry.lower]['tags']
+    tags.append(tag)
+    tags = list(set(tags))
     return True
 
 
@@ -66,12 +68,12 @@ def remove_tag(entry: str, tag: str):
     NOTES[entry.lower]['tags'].remove(tag.lower)
 
 
-def update_tags(entry: str, new_tags: set = set()):
+def update_tags(entry: str, tags: set = set()):
     """Removes all tags from the specified entry.
 
     Args:
         entry (str): Entry to edit
-        new_tags (set): New tags
+        tags (set): New tags
     """
     NOTES[entry.lower]['tags'] = new_tags
 
@@ -83,3 +85,20 @@ def delete_entry(entry: str):
         entry (str): Entry to delete.
     """
     NOTES.pop(entry.lower)
+
+
+def print_entries():
+    """Prints all the entries in a human readable form"""
+    formatted = json.dumps(NOTES, sort_keys=True,
+                           indent=2, separators=(",", ": ")
+    print(formatted)
+    
+
+
+# Testing purposes
+if __name__ == "__main__":
+    
+    add_entry("FirstNote", "Entry in notes", "new", "sample")
+    add_entry("SecondNote", "basic stuff", "python", "json")
+    print_entries()
+
