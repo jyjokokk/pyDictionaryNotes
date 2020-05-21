@@ -112,3 +112,4 @@ dmypy.json
 # Personal
 data/
 *config.py
+.todo2

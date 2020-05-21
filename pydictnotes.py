@@ -10,13 +10,15 @@ TODO:
     - Replace argparse with Click
     - Write tests
     - Integrate to GUI or web
+    - Access entries with numbers
 """
 import argparse
 import json
 import sys
 
+from dictnoteconfig import *
 
-PATH_TO_DATA = "./data/notes.json"
+# PATH_TO_JSON = "./data/notes.json"
 NOTES = {}
 
 
@@ -112,7 +114,7 @@ def print_entries(item: dict):
 
 def save_file():
     """Writes all notes to a file"""
-    with open(PATH_TO_DATA, "w") as out_file:
+    with open(PATH_TO_JSON, "w") as out_file:
         json.dump(NOTES, out_file)
 
 
@@ -131,6 +133,27 @@ def main():
     Serves as a container function for functionality only needed when executed
     directly.
     """
+
+
+# Main
+if __name__ == "__main__":
+
+    try:
+        with open(PATH_TO_JSON, "r") as in_file:
+            data = in_file.read()
+            NOTES = json.loads(data)
+    except json.JSONDecodeError as e:
+        print(f"Error occured when trying to read the file: {e}")
+    except IOError as e:
+        print("File not found, writing a new one...")
+        new_json = {}
+        with open(PATH_TO_JSON, 'w') as out_file:
+            json.dump(new_json, out_file)
+
+    # with open(PATH_TO_JSON, "r") as in_file:
+    #     data = in_file.read()
+    #     NOTES = json.loads(data)
+            
     parser = argparse.ArgumentParser(
         description="Add or manage JSON style notes", prog="dictnotes"
     )
@@ -167,7 +190,7 @@ def main():
     parser.add_argument(
         "-d",
         "--delete",
-        nargs="n",
+        nargs="+",
         type=str,
         dest="rmtag",
         help="Remove a tag from an entry",
@@ -175,7 +198,7 @@ def main():
     parser.add_argument(
         "-e",
         "--edit",
-        nargs="n",
+        nargs="+",
         dest="descedit",
         help="Edit the description of an entry."
     )
@@ -211,27 +234,6 @@ def main():
         for t in args.rmtag[1:]:
             remove_tag(args.rmtag[0], t)
         save_file()
-
-
-# Main
-if __name__ == "__main__":
-
-    try:
-        with open(PATH_TO_DATA, "r") as in_file:
-            data = in_file.read()
-            NOTES = json.loads(data)
-    except json.JSONDecodeError as e:
-        print(f"Error occured when trying to read the file: {e}")
-    except IOError as e:
-        print("File not found, writing a new one...")
-        new_json = {}
-        with open(PATH_TO_DATA, 'w') as out_file:
-            json.dump(new_json, out_file)
-            
-
-    with open(PATH_TO_DATA, "r") as in_file:
-        data = in_file.read()
-        NOTES = json.loads(data)
     
     main()
 
