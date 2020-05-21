@@ -1,0 +1,10 @@
+{
+    "Entry 1": {
+        "description": "This is a note entry.",
+        "tags": ["new", "sample"]
+    },
+    "Entry 2": {
+        "description": "Second entry",
+        "tags": ["number", "two"]
+    }
+}
