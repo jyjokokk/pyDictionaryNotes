@@ -11,6 +11,9 @@ import json
 
 NOTES = {}
 
+with open('data/notes.json', 'w+') as data:
+    NOTES = json.load(data)
+
 
 def add_entry(entry: str, description: str, *args: str) -> bool:
     """Adds a new entry, with optional tags
@@ -24,11 +27,8 @@ def add_entry(entry: str, description: str, *args: str) -> bool:
     """
     tags = []
     for a in args:
-        tags.add(a.lower)
-    NOTES[entry.lower] = {
-        "description": description,
-        "tags": tags
-    }
+        tags.append(a)
+    NOTES[entry] = {"description": description, "tags": tags}
     return True
 
 
@@ -39,7 +39,7 @@ def edit_description(entry: str, new_desc: str):
         entry (str): Entry to edit
         new_desc (str): New description for the entry
     """
-    NOTES[entry.lower]['desc'] = new_desc
+    NOTES[entry]["desc"] = new_desc
 
 
 def add_tag(entry: str, tag: str) -> bool:
@@ -52,9 +52,9 @@ def add_tag(entry: str, tag: str) -> bool:
     Returns:
         bool: if successfull
     """
-    tags = NOTES[entry.lower]['tags']
+    tags = NOTES[entry]["tags"]
     tags.append(tag)
-    tags = list(set(tags))
+    NOTES[entry]["tags"] = list(set(tags))
     return True
 
 
@@ -65,17 +65,17 @@ def remove_tag(entry: str, tag: str):
         entry (str): Entry to edit
         tag (str): Tag to remove
     """
-    NOTES[entry.lower]['tags'].remove(tag.lower)
+    NOTES[entry]["tags"].remove(tag)
 
 
-def update_tags(entry: str, tags: set = set()):
+def update_tags(entry: str, tags: list = []):
     """Removes all tags from the specified entry.
 
     Args:
         entry (str): Entry to edit
         tags (set): New tags
     """
-    NOTES[entry.lower]['tags'] = new_tags
+    NOTES[entry]["tags"] = tags
 
 
 def delete_entry(entry: str):
@@ -84,21 +84,39 @@ def delete_entry(entry: str):
     Args:
         entry (str): Entry to delete.
     """
-    NOTES.pop(entry.lower)
+    NOTES.pop(entry)
 
 
-def print_entries():
-    """Prints all the entries in a human readable form"""
-    formatted = json.dumps(NOTES, sort_keys=True,
-                           indent=2, separators=(",", ": ")
-    print(formatted)
-    
+def print_entries_raw():
+    """Prints all the entries in raw JSON form."""
+    out = json.dumps(NOTES, sort_keys=True, indent=2, separators=(",", ": "))
+    print(out)
+
+
+def print_entries(item: dict):
+    """Prints all the entries in notes in human readable form.""" 
+    for note in NOTES:
+        if type(note) is dict:
+            print_entries(note)
+        out = json.dumps(note,
+                         sort_keys=True,
+                         indent=2,
+                         separators=(",", ": "))
+        print(out)
 
 
 # Testing purposes
 if __name__ == "__main__":
-    
+
     add_entry("FirstNote", "Entry in notes", "new", "sample")
     add_entry("SecondNote", "basic stuff", "python", "json")
-    print_entries()
-
+    print_entries_raw()
+    print("========================")
+    add_tag('FirstNote', "pyflakes")
+    remove_tag('SecondNote', 'json')
+    edit_description('SecondNote', "New description!")
+    print_entries_raw()
+    print("========================")
+    update_tags('FirstNote')
+    delete_entry('SecondNote')
+    print_entries_raw()
