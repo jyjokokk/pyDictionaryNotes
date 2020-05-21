@@ -9,9 +9,10 @@ tags.
 import json
 
 
+PATH_TO_DATA = "./data/notes.json"
 NOTES = {}
 
-with open('data/notes.json', 'w+') as data:
+with open(PATH_TO_DATA, 'w+') as data:
     NOTES = json.load(data)
 
 
@@ -103,6 +104,15 @@ def print_entries(item: dict):
                          indent=2,
                          separators=(",", ": "))
         print(out)
+
+
+def save_file():
+    """Writes all notes to a file"""
+    with open(PATH_TO_DATA, 'w') as out_file:
+        # json.dump(data, out_file)
+        out = json.dumps(NOTES, sort_keys=True, indent=2, separators=(",", ": "))
+        out_file.write(out)
+        
 
 
 # Testing purposes
