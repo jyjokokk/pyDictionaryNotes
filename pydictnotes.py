@@ -16,10 +16,13 @@ import argparse
 import json
 import sys
 
+from collections import OrderedDict
 from dictnoteconfig import *
+from typing import Callable, List, OrderedDict, Dict
 
 # PATH_TO_JSON = "./data/notes.json"
-NOTES = {}
+NOTES = OrderedDict()
+KEYS_LIST = list(NOTES.keys())
 
 
 def add_entry(entry: str, description: str, *args: str) -> bool:
@@ -75,7 +78,7 @@ def remove_tag(entry: str, tag: str):
     NOTES[entry]["tags"].remove(tag.lower())
 
 
-def update_tags(entry: str, tags: list = []):
+def update_tags(entry: str, tags: List[str] = []):
     """Removes all tags from the specified entry.
 
     Args:
@@ -101,59 +104,111 @@ def print_entries_raw():
     print(out)
 
 
-def print_entries(item: dict):
+def print_entries(items: OrderedDict[str, str]):
     """Prints all the entries in notes in human readable form."""
-    for note in NOTES:
-        if type(note) is dict:
-            print_entries(note)
-        out = json.dumps(
-            note, sort_keys=True, indent=2, separators=(",", ": ")
-        )
-        print(out)
+    key_id = 0
+    for key, value in items.items():
+        values = json.dumps(value,
+                            sort_keys=True,
+                            indent=2,
+                            separators=("", ": "))
+        print(f"[{key_id}] {key}:{values}")
+        key_id += 1
 
 
-def save_file():
-    """Writes all notes to a file"""
-    with open(PATH_TO_JSON, "w") as out_file:
+def print_entry(entry_ind: int):
+    """Print a single entry out.
+
+    Arguments:
+        items {OrderedDict} -- Dictionary to to search from
+        entry_ind {int} -- Index of the entry in items.keys() as a list
+    """
+    target_entry = KEYS_LIST[entry_ind]
+    values = json.dumps(NOTES[target_entry],
+                        indent = 2,
+                        separators=("", ": "))
+    out = f"[{entry_ind}] {target_entry}: {values}"
+    print(out)
+
+
+def save_file(path: str):
+    """Write entries data to JSON file
+
+    Args:
+        path (str): Path to JSON file
+
+    """
+    with open(path, "w") as out_file:
         json.dump(NOTES, out_file)
 
 
-def save_file_pretty():
-    """Writes all notes to a file, in human readable format"""
-    with open("data/notes_pretty.json", "w") as out_file:
-        out = json.dumps(
-            NOTES, sort_keys=True, indent=2, separators=(",", ": ")
-        )
+def save_file_pretty(path: str):
+    """Writes all notes to a file, in human readable format
+    
+    Args:
+        path (str): Path to JSON file
+    
+    """
+    pretty_file = f"{path[:-5]}_pretty.json" 
+    with open(pretty_file, "w") as out_file:
+        out = json.dumps(NOTES,
+                         sort_keys=True,
+                         indent=2,
+                         separators=(",", ": "))
         out_file.write(out)
 
 
-def main():
-    """Function to execute when ran from the command line.
+def read_file(path: str) -> OrderedDict:
+    """Reads data from a JSON file in given path.
 
-    Serves as a container function for functionality only needed when executed
-    directly.
+    Args:
+        path (str): Path to JSON file
+
+    Returns:
+        dict: Data from the JSON as a dictionary.
     """
+    with open(path, "r") as f:
+        data = json.load(f)
+    return OrderedDict(data)
+
+
+def cli_multivalue(func: Callable, *args: str):
+    """Call functions that take multiple arguments.
+
+    Args:
+        func (Callable): Function to call with given values
+        args (str): Va len of arguments
+    """
+    target_entry = KEYS_LIST[int(args[0])]
+    for a in args[1:]:
+        func(target_entry, a)
+    save_file(PATH_TO_JSON)
+
+
+def cli_singlevalue(func: Callable, *args: int):
+    """Call functions with single target.
+
+    Args:
+        func (Callable): Function to call with given values
+        args (str): Varying lenght of arguments
+    """
+    for a in args[1:]:
+        target_entry = KEYS_LIST[a]
+        func(target_entry)
+    
 
 
 # Main
 if __name__ == "__main__":
 
     try:
-        with open(PATH_TO_JSON, "r") as in_file:
-            data = in_file.read()
-            NOTES = json.loads(data)
+        NOTES = read_file(PATH_TO_JSON)
     except json.JSONDecodeError as e:
         print(f"Error occured when trying to read the file: {e}")
     except IOError as e:
         print("File not found, writing a new one...")
-        new_json = {}
-        with open(PATH_TO_JSON, 'w') as out_file:
-            json.dump(new_json, out_file)
+        save_file(PATH_TO_JSON)
 
-    # with open(PATH_TO_JSON, "r") as in_file:
-    #     data = in_file.read()
-    #     NOTES = json.loads(data)
-            
     parser = argparse.ArgumentParser(
         description="Add or manage JSON style notes", prog="dictnotes"
     )
@@ -162,12 +217,7 @@ if __name__ == "__main__":
         parser.exit()
 
     parser.add_argument(
-        "-a",
-        "--add",
-        nargs="+",
-        type=str,
-        dest="addentry",
-        help="Add a new entry",
+        "-a", "--add", nargs="+", type=str, dest="addentry", help="Add a new entry",
     )
     parser.add_argument(
         "-l",
@@ -177,12 +227,7 @@ if __name__ == "__main__":
         help="List entries as raw JSON",
     )
     parser.add_argument(
-        "-rm",
-        "--remove",
-        nargs="+",
-        type=str,
-        dest="rmentry",
-        help="Remove an entry",
+        "-rm", "--remove", nargs="+", type=int, dest="rmentry", help="Remove an entry",
     )
     parser.add_argument(
         "-t", "--tag", nargs="+", type=str, help="Add a new tag to an entry"
@@ -200,57 +245,27 @@ if __name__ == "__main__":
         "--edit",
         nargs="+",
         dest="descedit",
-        help="Edit the description of an entry."
+        help="Edit the description of an entry.",
     )
 
     args = parser.parse_args()
 
+
+
     if args.list:
-        print_entries_raw()
+        print_entries(NOTES)
 
     if args.addentry:
-        add_entry(
-            args.addentry[0], "placeholder description", args.addentry[1]
-        )
-        if len(args.addentry) > 2:
-            for t in args.addentry[2:]:
-                add_tag(args.addentry[0], t)
-        save_file()
+        cli_multivalue(add_entry, *args.addentry)
 
     if args.tag:
-        for t in args.tag[1:]:
-            add_tag(args.tag[0], t)
-        save_file()
-    
+        cli_multivalue(add_tag, *args.tag)
+
     if args.descedit:
-        edit_description(args.descedit[0], args.descedit[1])
+        cli_multivalue(edit_description, *args.descedit)
 
     if args.rmentry:
-        for r in args.rmentry:
-            delete_entry(args.rmentry[0])
-        save_file()
+        cli_singlevalue(delete_entry, *args.rmentry)
 
     if args.rmtag:
-        for t in args.rmtag[1:]:
-            remove_tag(args.rmtag[0], t)
-        save_file()
-    
-    main()
-
-    # add_entry("FirstNote", "Entry in notes", "new", "sample")
-    # add_entry("SecondNote", "basic stuff", "python", "json")
-    # add_entry("Third Note", "Third note in file", "pretty", "print", "format")
-    # delete_entry('Third Note')
-    # save_file()
-    # save_file_pretty()
-    # print_entries_raw()
-    # print_entries_raw()
-    # print("========================")
-    # add_tag('FirstNote', "pyflakes")
-    # remove_tag('SecondNote', 'json')
-    # edit_description('SecondNote', "New description!")
-    # print_entries_raw()
-    # print("========================")
-    # update_tags('FirstNote')
-    # delete_entry('SecondNote')
-    # print_entries_raw()
+        cli_multivalue(remove_tag, *args.rmtag)
