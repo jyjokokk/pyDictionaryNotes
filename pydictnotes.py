@@ -5,24 +5,25 @@ The notes will be stared in a dictionary / JSON format, and the idea is, that
 every entry is unique, and they have a description for the note, and multiple
 tags.
 
-TODO:
-    - Make entries case insensitive
-    - Replace argparse with Click
-    - Write tests
-    - Integrate to GUI or web
-    - Access entries with numbers
+Todo:
+    * Better printing
+    * Clean up argparse to it's own function, and call it from main()
+    * Description adding on input
+    * Add error handling to functions (try / catch)
+    * Make entries case insensitive
+    * Access entries by index / id
+    * Write a better config file
+    * Write tests
+    * (Replace argparse with Click?)
+
 """
 import argparse
 import json
 import sys
 
-from collections import OrderedDict
-from dictnoteconfig import *
-from typing import Callable, List, OrderedDict, Dict
+from dictnoteconfig import *  # will be changed to attribute instead of import
 
-# PATH_TO_JSON = "./data/notes.json"
-NOTES = OrderedDict()
-KEYS_LIST = list(NOTES.keys())
+NOTES: dict = {}  # Holds all the notes once read from disk
 
 
 def add_entry(entry: str, description: str, *args: str) -> bool:
@@ -33,23 +34,33 @@ def add_entry(entry: str, description: str, *args: str) -> bool:
         description(str): Description for the entry.
 
     Returns:
-        bool -- If operation succeeded
+        True for success, False for failure
+
+    Todo:
+        * Switch from bool returns to try / catch for error handling
     """
-    tags = []
-    for a in args:
-        tags.append(a.lower())
-    NOTES[entry] = {"description": description, "tags": tags}
-    return True
+    try:
+        tags = []
+        for a in args:
+            tags.append(a.lower())
+        tags.sort()
+        NOTES[entry] = {"description": description, "tags": tags}
+        return True
+    except NameError:
+        print("Notes object not found.")
+    except Exception as e:
+        print(e)
+        return False
 
 
-def edit_description(entry: str, new_desc: str):
-    """Updates the description of an entry 
+def edit_description(entry: str, new_desc: str) -> None:
+    """Updates the description of an entry
 
     Args:
         entry (str): Entry to edit
         new_desc (str): New description for the entry
     """
-    NOTES[entry]["desc"] = new_desc
+    NOTES[entry]["description"] = new_desc
 
 
 def add_tag(entry: str, tag: str) -> bool:
@@ -60,7 +71,10 @@ def add_tag(entry: str, tag: str) -> bool:
         tag (str): New tag
 
     Returns:
-        bool: if successfull
+        True if operation succesfull, False if not.
+
+    Todo:
+        * Why does this return a boolean, is it even needed?
     """
     tags = NOTES[entry]["tags"]
     tags.append(tag.lower())
@@ -68,7 +82,7 @@ def add_tag(entry: str, tag: str) -> bool:
     return True
 
 
-def remove_tag(entry: str, tag: str):
+def remove_tag(entry: str, tag: str) -> None:
     """Removes the given tag from the specified entry.
 
     Args:
@@ -78,7 +92,7 @@ def remove_tag(entry: str, tag: str):
     NOTES[entry]["tags"].remove(tag.lower())
 
 
-def update_tags(entry: str, tags: List[str] = []):
+def update_tags(entry: str, tags: list = []) -> None:
     """Removes all tags from the specified entry.
 
     Args:
@@ -87,185 +101,224 @@ def update_tags(entry: str, tags: List[str] = []):
     """
     new_tags = map(lambda t: t.lower(), tags)
     NOTES[entry]["tags"] = list(set(new_tags))
+    print(f"Tags for {entry} updated to: {NOTES[entry]['tags']}")
 
 
-def delete_entry(entry: str):
-    """Deletes the specified entry.
+def delete_entries(entries: list) -> bool:
+    """Delete the given entries.
 
     Args:
-        entry (str): Entry to delete.
+        entry: List of entries to delete.
+
+    Returns:
+        Was the process completed or not.
     """
-    NOTES.pop(entry)
+    if len(entries) > 1:
+        question = f"Are you sure you want to delete {len(entries)} entries?"
+        if not confirm(question):
+            return False
+    for e in entries:
+        NOTES.pop(e)
+    return True
 
 
-def print_entries_raw():
-    """Prints all the entries in raw JSON form."""
-    out = json.dumps(NOTES, sort_keys=True, indent=2, separators=(",", ": "))
+def delete_all_entries() -> bool:
+    """Delete all entries from the dictionary and overwrite the save file.
+
+    Prompts the user to confirm the action, with default option being 'No'.
+
+    Returns:
+        True if process was completed, False if not.
+
+    """
+    question = "Are you sure you want to permanently delete all entries?"
+    if not confirm(question, "no"):  # if answer is 'no'
+        return False
+    NOTES.clear()
+    save_file()
+    return True
+
+
+def print_entries_json() -> None:
+    """Prints all the entries in human readable JSON form."""
+    out = json.dumps(
+        NOTES, sort_keys=True, indent=2, separators=(",", ": ")
+    )
     print(out)
 
 
-def print_entries(items: OrderedDict[str, str]):
-    """Prints all the entries in notes in human readable form."""
-    key_id = 0
-    for key, value in items.items():
-        values = json.dumps(value,
-                            sort_keys=True,
-                            indent=2,
-                            separators=("", ": "))
-        print(f"[{key_id}] {key}:{values}")
-        key_id += 1
+def print_entries() -> None:
+    """Prints all the note entries in human readable form.
 
+    Formats the entries in a table like manner, with the 'Name' of the entry
+    on the left, tags on the middle, and description on the right.
 
-def print_entry(entry_ind: int):
-    """Print a single entry out.
-
-    Arguments:
-        items {OrderedDict} -- Dictionary to to search from
-        entry_ind {int} -- Index of the entry in items.keys() as a list
-    """
-    target_entry = KEYS_LIST[entry_ind]
-    values = json.dumps(NOTES[target_entry],
-                        indent = 2,
-                        separators=("", ": "))
-    out = f"[{entry_ind}] {target_entry}: {values}"
-    print(out)
-
-
-def save_file(path: str):
-    """Write entries data to JSON file
-
-    Args:
-        path (str): Path to JSON file
+    Todo:
+        * Add description to printing
+        * See for better formatting
 
     """
-    with open(path, "w") as out_file:
+    if len(NOTES) == 0:
+        print("No entries found!")
+        print("Use 'dictnote --help' to list available commands.")
+        return None
+    print(f"{'Note':^20} {'Tags':^20}")
+    print(f"{'----':^20} {'----':^20}")
+    for key, value in NOTES.items():
+        print(f"{key:^20}|   {str(sorted(value['tags']))}")
+
+
+def save_file() -> None:
+    """Writes all notes to a file"""
+    with open(PATH_TO_JSON, "w") as out_file:
         json.dump(NOTES, out_file)
 
 
-def save_file_pretty(path: str):
-    """Writes all notes to a file, in human readable format
-    
-    Args:
-        path (str): Path to JSON file
-    
-    """
-    pretty_file = f"{path[:-5]}_pretty.json" 
-    with open(pretty_file, "w") as out_file:
-        out = json.dumps(NOTES,
-                         sort_keys=True,
-                         indent=2,
-                         separators=(",", ": "))
+def save_file_pretty() -> None:
+    """Writes all notes to a file, in human readable format"""
+    with open(PATH_TO_JSON + "_hr", "w") as out_file:
+        out = json.dumps(
+            NOTES, sort_keys=True, indent=2, separators=(",", ": ")
+        )
         out_file.write(out)
 
 
-def read_file(path: str) -> OrderedDict:
-    """Reads data from a JSON file in given path.
+def confirm(question: str, default: str = "yes") -> bool:
+    """Ask confirmation to a yes/no question and return the result as boolean.
 
     Args:
-        path (str): Path to JSON file
+        question: Question to ask and print for user
+        default: The default answer (used if answer input is left empty)
 
-    Returns:
-        dict: Data from the JSON as a dictionary.
+    Returns: True if yes, False if no or the input was incorrect
+
     """
-    with open(path, "r") as f:
-        data = json.load(f)
-    return OrderedDict(data)
+    valid = {"yes": True, "ye": True, "y": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = "[y/n]"
+    elif default == "yes":
+        prompt = "[Y/n]"
+    else:
+        prompt = "[y/N]"
+    while True:
+        print(f"{question} {prompt}")
+        answer = input(">").lower()
+        if default is not None and answer == '':
+            return valid[default]
+        elif answer in valid:
+            return valid[answer]
+        else:
+            return False
 
 
-def cli_multivalue(func: Callable, *args: str):
-    """Call functions that take multiple arguments.
+def main() -> None:
+    """Function to execute when ran from the command line.
 
-    Args:
-        func (Callable): Function to call with given values
-        args (str): Va len of arguments
+    Serves as a container function for functionality only needed when executed
+    directly.
     """
-    target_entry = KEYS_LIST[int(args[0])]
-    for a in args[1:]:
-        func(target_entry, a)
-    save_file(PATH_TO_JSON)
-
-
-def cli_singlevalue(func: Callable, *args: int):
-    """Call functions with single target.
-
-    Args:
-        func (Callable): Function to call with given values
-        args (str): Varying lenght of arguments
-    """
-    for a in args[1:]:
-        target_entry = KEYS_LIST[a]
-        func(target_entry)
-    
 
 
 # Main
 if __name__ == "__main__":
 
     try:
-        NOTES = read_file(PATH_TO_JSON)
+        with open(PATH_TO_JSON, "r") as in_file:
+            data = in_file.read()
+            NOTES = json.loads(data)
     except json.JSONDecodeError as e:
         print(f"Error occured when trying to read the file: {e}")
     except IOError as e:
         print("File not found, writing a new one...")
-        save_file(PATH_TO_JSON)
+        new_json = {}
+        with open(PATH_TO_JSON, 'w') as out_file:
+            json.dump(new_json, out_file)
 
     parser = argparse.ArgumentParser(
-        description="Add or manage JSON style notes", prog="dictnotes"
+        prog="dictnote",
+        usage="%(prog)s [options]",
+        description="Add or manage JSON style notes",
+        epilog="You can change options in the dictnoteconfig.py file. Happy notekeeping!"
     )
     if len(sys.argv) == 1:
-        parser.print_help()
-        parser.exit()
+        print_entries()
 
     parser.add_argument(
-        "-a", "--add", nargs="+", type=str, dest="addentry", help="Add a new entry",
+        "-a",
+        "--add",
+        nargs="+",
+        metavar='ENTRY',
+        help="Add a new entry",
     )
     parser.add_argument(
         "-l",
         "--list",
         action="store_true",
-        dest="list",
         help="List entries as raw JSON",
     )
     parser.add_argument(
-        "-rm", "--remove", nargs="+", type=int, dest="rmentry", help="Remove an entry",
+        "-rm",
+        "--remove",
+        nargs="+",
+        metavar='ENTRY',
+        help="Remove an entry",
     )
     parser.add_argument(
-        "-t", "--tag", nargs="+", type=str, help="Add a new tag to an entry"
+        "--remove-all",
+        action="store_true",
+        dest="rmall",
+        help="Delete all entries in dictnote and overwrite the savefile",
+    )
+    parser.add_argument(
+        "-t", "--tag", nargs="+", help="Add a new tag to an entry"
     )
     parser.add_argument(
         "-d",
         "--delete",
         nargs="+",
-        type=str,
-        dest="rmtag",
-        help="Remove a tag from an entry",
+        metavar='TAG',
+        help="Remove a tag from an entry"
     )
     parser.add_argument(
         "-e",
         "--edit",
         nargs="+",
-        dest="descedit",
-        help="Edit the description of an entry.",
+        help="Edit the description of an entry."
     )
 
     args = parser.parse_args()
 
-
+    if args.add:
+        add_entry(
+            args.add[0], "", args.add[1]
+        )
+        if len(args.add) > 2:
+            for t in args.add[2:]:
+                add_tag(args.add[0], t)
+        save_file()
 
     if args.list:
-        print_entries(NOTES)
+        print_entries()
 
-    if args.addentry:
-        cli_multivalue(add_entry, *args.addentry)
+    if args.rmall:
+        delete_all_entries()
+        save_file()
 
     if args.tag:
-        cli_multivalue(add_tag, *args.tag)
+        for t in args.tag[1:]:
+            add_tag(args.tag[0], t)
+        save_file()
 
-    if args.descedit:
-        cli_multivalue(edit_description, *args.descedit)
+    if args.edit:
+        edit_description(args.edit[0], args.edit[1])
 
-    if args.rmentry:
-        cli_singlevalue(delete_entry, *args.rmentry)
+    if args.remove:
+        delete_entries(args.remove)
+        save_file()
 
-    if args.rmtag:
-        cli_multivalue(remove_tag, *args.rmtag)
+    if args.delete:
+        for t in args.delete[1:]:
+            remove_tag(args.delete[0], t)
+        save_file()
+

@@ -113,3 +113,5 @@ dmypy.json
 data/
 *config.py
 .todo2
+.venv
+.ycm_extra_conf.py
