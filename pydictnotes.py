@@ -21,7 +21,9 @@ import argparse
 import json
 import sys
 
-from dictnoteconfig import *  # will be changed to attribute instead of import
+# will be changed to attribute instead of import
+from dictnoteconfig import PATH_TO_JSON
+
 
 NOTES: dict = {}  # Holds all the notes once read from disk
 
@@ -229,7 +231,7 @@ if __name__ == "__main__":
             NOTES = json.loads(data)
     except json.JSONDecodeError as e:
         print(f"Error occured when trying to read the file: {e}")
-    except IOError as e:
+    except IOError:
         print("File not found, writing a new one...")
         new_json = {}
         with open(PATH_TO_JSON, 'w') as out_file:

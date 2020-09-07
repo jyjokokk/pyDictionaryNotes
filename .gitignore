@@ -115,3 +115,4 @@ data/
 .todo2
 .venv
 .ycm_extra_conf.py
+dictnoteconfig.py
